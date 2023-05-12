@@ -227,7 +227,13 @@ public class MainActivity extends AppCompatActivity {
 
                                         // 3. Enviar los datos
                                         respuesta = "";
-
+                                        try {
+                                            new Connection().execute().get();
+                                        } catch (ExecutionException e) {
+                                            e.printStackTrace();
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        }
 
                                         Toast.makeText(MainActivity.this, "Petición enviada correctamente", Toast.LENGTH_SHORT).show();
                                         Toast.makeText(MainActivity.this, "Respuesta del servidor: " + respuesta, Toast.LENGTH_SHORT).show();
@@ -259,7 +265,92 @@ public class MainActivity extends AppCompatActivity {
         return new String(hexChars);
     }
 
+    class Connection extends AsyncTask<String , String , String> {
 
+        @Override
+        protected String doInBackground(String... strings) {
+            try {
+                // System.setProperty("javax.net.ssl.trustStore", "com/example/myapplication/keystore.jks");
+                // System.setProperty("javax.net.ssl.trustStorePassword", "pai3123");
+
+                KeyStore keyStore = KeyStore.getInstance("PKCS12"); // this will be your certificate files extension.
+                //File file = new File("pai5.cert");
+                // String filePath = file.getAbsolutePath();
+
+                InputStream i = getResources().openRawResource(R.raw.keystore);
+
+                keyStore.load(i, "complexpassword".toCharArray());
+
+                KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                keyManagerFactory.init(keyStore, "complexpassword".toCharArray());
+
+                TrustManagerFactory tm = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tm.init(keyStore);
+
+                SSLContext sslContext = SSLContext.getInstance("SSL");
+                sslContext.init(keyManagerFactory.getKeyManagers(), tm.getTrustManagers(), null);
+
+                SSLSocketFactory socketFactory =sslContext.getSocketFactory();
+
+                SSLSocket socket = (SSLSocket) socketFactory.createSocket();
+                // Si a los 2 segundos no obtiene respuesta del servidor significa que ha
+                // cerrado el socket por sobrecarga para evitar DoS
+                socket.connect(new InetSocketAddress("10.0.2.2" ,7070), 2000);
+                socket.startHandshake();
+
+                // SSLSocketFactory socketFactory = (SSLSocketFactory)  SSLSocketFactory.getDefault();
+                // Socket sock = new Socket();
+                //sock.connect(new InetSocketAddress("10.0.2.2" ,7070), 1000);
+                //SSLSocket socket = (SSLSocket) socketFactory.createSocket("10.0.2.2", 7070); // Localhost lo considera como el propio emulador
+                //socket.setEnabledProtocols(new String[] {"TLSv1.3"});
+
+                // Si el servidor no acepta la conexion
+                if(socket.isConnected()) {
+
+                    // Crea un PrintWriter para enviar datos al servidor
+                    PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+
+                    // Crea un objeto BufferedReader para leer la respuesta del servidor
+                    BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+
+
+
+                    // Usuario transmite el mensaje
+                    output.println(Arrays.toString(messageBody));
+                    output.flush();
+
+                    // Usuario transmite la firma del mensaje
+                    output.println(bytesToHex(firma));
+                    output.flush();
+                    firma = new byte[]{};
+
+                    // Usuario transmite su clave pública
+                    RSAPublicKey pk = (RSAPublicKey) keyList.get(numClienteActual).getPublic();
+                    numClienteActual = null;
+                    output.println(bytesToHex(pk.getEncoded()));
+                    output.flush();
+
+
+                    // Lee la respuesta del servidor
+                    respuesta = input.readLine();
+
+                    // Se cierra la conexion
+                    output.close();
+                    input.close();
+                } else {
+                    respuesta = "Servidor rechaza por sobrecarga";
+                }
+                socket.close();
+                // end try
+            } catch (Exception Exception) {
+                Exception.printStackTrace();
+                respuesta = "Error en la trasnmision";
+            }
+            return null;
+        }
+
+    }
 
 
 }
