@@ -1,0 +1,4 @@
+Mes: 05, A?o: 2023, Ratio mensual: 1.0, Tendencia: +
+Mes: 05, A?o: 2023, Ratio mensual: NaN, Tendencia: 0
+Mes: 05, Ano: 2023, Ratio mensual: NaN, Tendencia: 0
+Mes: 05, Ano: 2023, Ratio mensual: NaN, Tendencia: 0
