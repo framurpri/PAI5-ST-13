@@ -9,6 +9,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.6.3'
+        implementation("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:3.3")
         
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -26,4 +27,15 @@ allprojects {
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+tasks.register("sonarqube") {
+    doLast {
+        tasks.sonarqube {
+            properties {
+                property("sonar.projectKey", "framurpri_PAI5-ST-13")
+                // Otras propiedades de configuración de SonarQube...
+            }
+        }
+    }
 }
