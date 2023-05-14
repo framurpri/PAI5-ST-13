@@ -65,14 +65,22 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Se especifican los numeros de cliente valdios
-        poblarNumerosCliente();
+        // Se añaden los numeros de cliente validos
+        numerosCliente.add(1);
+        numerosCliente.add(2);
+        numerosCliente.add(3);
 
-        // Creamos las keys para varios clientes cada uno con un número de cliente asociado (los que están declarado en el atributo numerosCliente)
-        try {
-            createKeys();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+        // Creamos las claves para cada cliente
+        for(Integer i: numerosCliente) {
+            KeyPairGenerator keygen = null;
+            try {
+                keygen = KeyPairGenerator.getInstance("RSA");
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            }
+            keygen.initialize(2048);
+            KeyPair keys = keygen.generateKeyPair();
+            keyList.put(i, keys);
         }
 
         // Capturamos el boton de Enviar
@@ -82,31 +90,14 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                showDialog();
+                validate();
             }
         });
 
     }
 
-    // Se añaden los numeros de cliente validos
-    private void poblarNumerosCliente() {
-        numerosCliente.add(7);
-        numerosCliente.add(123);
-        numerosCliente.add(256);
-    }
-
-    // Creación de las claves
-    private void createKeys() throws NoSuchAlgorithmException {
-        for(Integer i: numerosCliente) {
-            KeyPairGenerator keygen = KeyPairGenerator.getInstance("RSA");
-            keygen.initialize(2048);
-            KeyPair keys = keygen.generateKeyPair();
-            keyList.put(i, keys);
-        }
-    }
-
-    // Creación de un cuadro de dialogo para confirmar pedido
-    private void showDialog() throws Resources.NotFoundException {
+    // Validamos las entradas
+    private void validate() throws Resources.NotFoundException {
         boolean enviar = true;
 
         EditText campoCamas = (EditText) findViewById(R.id.camas);
@@ -129,10 +120,8 @@ public class MainActivity extends AppCompatActivity {
         String numCLienteValue = String.valueOf(campoNumCliente.getText());
 
         if (noCamas && noMesas && noSillas && noSillones) {
-            // Mostramos un mensaje emergente;
             Toast.makeText(getApplicationContext(), "Debe especificar al menos un elemento", Toast.LENGTH_SHORT).show();
         } else if (numCLienteValue.length()==0) {
-            // Mostramos un mensaje emergente;
             Toast.makeText(getApplicationContext(), "El número de cliente es obligatorio", Toast.LENGTH_SHORT).show();
         } else {
 
@@ -259,6 +248,7 @@ public class MainActivity extends AppCompatActivity {
         return hexadecimal;
     }
 
+    //función asincrona para conectar el socket
     class Connection extends AsyncTask<String , String , String> {
 
         @Override
@@ -281,39 +271,33 @@ public class MainActivity extends AppCompatActivity {
                 socket.connect(new InetSocketAddress("10.0.2.2" ,7070), 2000);
                 socket.startHandshake();
 
-                // Si el servidor acepta la conexion
-                if(socket.isConnected()) {
+                // Crea un PrintWriter para enviar datos al servidor
+                PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
 
-                    // Crea un PrintWriter para enviar datos al servidor
-                    PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+                // Crea un objeto BufferedReader para leer la respuesta del servidor
+                BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-                    // Crea un objeto BufferedReader para leer la respuesta del servidor
-                    BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                // Se transmite el mensaje
+                output.println(Arrays.toString(messageBody));
+                output.flush();
 
-                    // Usuario transmite el mensaje
-                    output.println(Arrays.toString(messageBody));
-                    output.flush();
+                // Se transmite la firma del mensaje
+                output.println(bytesToHex(firma));
+                output.flush();
+                firma = new byte[]{};
 
-                    // Usuario transmite la firma del mensaje
-                    output.println(bytesToHex(firma));
-                    output.flush();
-                    firma = new byte[]{};
+                // Se transmite su clave pública
+                RSAPublicKey pk = (RSAPublicKey) keyList.get(numClienteActual).getPublic();
+                numClienteActual = null;
+                output.println(bytesToHex(pk.getEncoded()));
+                output.flush();
 
-                    // Usuario transmite su clave pública
-                    RSAPublicKey pk = (RSAPublicKey) keyList.get(numClienteActual).getPublic();
-                    numClienteActual = null;
-                    output.println(bytesToHex(pk.getEncoded()));
-                    output.flush();
+                // Lee la respuesta del servidor
+                respuesta = input.readLine();
 
-                    // Lee la respuesta del servidor
-                    respuesta = input.readLine();
-
-                    // Se cierra la conexion
-                    output.close();
-                    input.close();
-                } else {
-                    respuesta = "Peticion rechazada por sobrecarga";
-                }
+                // Se cierra la conexion
+                output.close();
+                input.close();
                 socket.close();
 
             } catch (Exception Exception) {

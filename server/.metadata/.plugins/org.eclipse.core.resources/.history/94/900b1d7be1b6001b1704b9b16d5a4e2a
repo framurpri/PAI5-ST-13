@@ -1,0 +1,54 @@
+package sockets;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.Socket;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+
+public class LoginServer {
+		
+	private static final String[] protocols = new String[] {"TLSv1.2"};
+    private static final String[] cipher_suites = new String[] {"TLS_AES_128_GCM_SHA256"};	
+	private static final String CORRECT_USER_NAME = "vgomezalv";
+	private static final String CORRECT_PASSWORD = "H34arga$tenK";
+
+	public static void main(String[] args) throws Exception {
+		System.setProperty("javax.net.ssl.keyStore", "keystore.p12");
+		System.setProperty("javax.net.ssl.keyStorePassword", "complexpassword");
+		SSLServerSocketFactory socketFactory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+		SSLServerSocket serverSocket = (SSLServerSocket) socketFactory.createServerSocket(7070);
+		serverSocket.setEnabledProtocols(protocols);
+        serverSocket.setEnabledCipherSuites(cipher_suites);
+		
+		while (true) {
+			// Espera las peticiones del cliente para comprobar mensaje/MAC 
+			try {
+				System.err.println( "Esperando conexiones de clientes...");
+				SSLSocket socket =  (SSLSocket) serverSocket.accept();
+
+				// Abre un BufferedReader para leer los datos del cliente
+				BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				// Abre un PrintWriter para enviar datos al cliente
+				PrintWriter output = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+				
+				// Se lee mensaje y firma
+				String mensaje = input.readLine();
+				String firma = input.readLine();
+				System.out.println(mensaje);
+				System.out.println(firma);
+				// Verifica los datos
+				// TODO 
+				
+			} catch(IOException e) {
+		
+			}     
+		}
+	
+	}
+}
