@@ -29,12 +29,11 @@ task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-tasks.register("sonarqube") {
+task sonarqube() {
     doLast {
         tasks.sonarqube {
             properties {
                 property("sonar.projectKey", "framurpri_PAI5-ST-13")
-                // Otras propiedades de configuración de SonarQube...
             }
         }
     }
